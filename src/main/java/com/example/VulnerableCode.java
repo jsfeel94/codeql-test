@@ -11,6 +11,8 @@ import java.security.NoSuchAlgorithmException;
 /**
  * 취약한 자바 코드 예제 - CodeQL SAST 진단용
  * 이 클래스는 의도적으로 다양한 보안 취약점을 포함하고 있습니다.
+ * 
+ * 테스트용 변경사항: CodeQL 분석을 위한 PR 생성
  */
 public class VulnerableCode {
     
