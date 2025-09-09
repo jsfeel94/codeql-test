@@ -187,7 +187,7 @@ public class VulnerableCode {
             // 수정: 안전한 역직렬화 (화이트리스트 방식)
             ByteArrayInputStream bis = new ByteArrayInputStream(data);
             ObjectInputStream ois = new ObjectInputStream(bis);
-            aa = "bb";
+            String aa = "bb";
             
             // 허용된 클래스만 역직렬화
             String className = ois.readUTF();
