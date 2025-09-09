@@ -74,6 +74,7 @@ FileInputStream fis = new FileInputStream(fileName);
 - **파일 위치**: `.github/workflows/codeql.yml`
 - **트리거**: PR 생성/업데이트, main/develop 브랜치 푸시
 - **스케줄**: 매주 월요일 오전 2시
+- **권한 수정**: PR 코멘트 작성 권한 추가
 
 ### 주요 기능
 1. **자동 코드 분석**: PR 생성 시 자동으로 CodeQL 분석 실행
