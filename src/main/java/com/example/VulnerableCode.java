@@ -46,17 +46,30 @@ public class VulnerableCode {
      */
     public String executeCommand(String userInput) {
         try {
-            // 수정: ProcessBuilder 사용 및 입력 검증
+            // 수정: 더 강화된 입력 검증 및 절대 경로 사용
             if (userInput == null || userInput.trim().isEmpty()) {
                 return "Invalid input";
             }
             
-            // 허용된 명령어만 실행 (화이트리스트 방식)
+            // 입력 길이 제한
+            if (userInput.length() > 100) {
+                return "Input too long";
+            }
+            
+            // 허용된 문자만 사용 (더 엄격)
             if (!userInput.matches("^[a-zA-Z0-9.-]+$")) {
                 return "Invalid characters in input";
             }
             
-            ProcessBuilder pb = new ProcessBuilder("ping", "-c", "1", userInput);
+            // IP 주소 형식 검증 (ping 명령어용)
+            if (!userInput.matches("^[a-zA-Z0-9.-]+$") || userInput.contains("..")) {
+                return "Invalid input format";
+            }
+            
+            // 절대 경로 사용하여 명령어 실행
+            ProcessBuilder pb = new ProcessBuilder("/bin/ping", "-c", "1", userInput);
+            pb.directory(new File("/")); // 작업 디렉토리를 루트로 설정
+            
             Process process = pb.start();
             
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -78,30 +91,47 @@ public class VulnerableCode {
      */
     public String readFile(String fileName) {
         try {
-            // 수정: 강화된 경로 검증
+            // 수정: 더 강화된 경로 검증
             if (fileName == null || fileName.trim().isEmpty()) {
                 return "Invalid file name";
             }
             
-            // 위험한 패턴 검사
-            String[] dangerousPatterns = {"..", "/", "\\", "~", "..\\", "../"};
+            // 모든 위험한 패턴 검사 (더 포괄적)
+            String[] dangerousPatterns = {
+                "..", "/", "\\", "~", "..\\", "../", "..%2f", "..%5c", 
+                "%2e%2e", "%2e%2e%2f", "%2e%2e%5c", "..%252f", "..%255c"
+            };
             for (String pattern : dangerousPatterns) {
-                if (fileName.contains(pattern)) {
+                if (fileName.toLowerCase().contains(pattern.toLowerCase())) {
                     return "Invalid file name: Dangerous pattern detected";
                 }
             }
             
-            // 파일명 정규화
+            // 파일명 길이 제한
+            if (fileName.length() > 255) {
+                return "Invalid file name: Too long";
+            }
+            
+            // 파일명 정규화 (더 엄격)
             String normalizedFileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "");
-            if (!normalizedFileName.equals(fileName)) {
+            if (!normalizedFileName.equals(fileName) || normalizedFileName.isEmpty()) {
                 return "Invalid file name: Contains invalid characters";
+            }
+            
+            // 파일명이 점으로 시작하거나 끝나는지 확인
+            if (normalizedFileName.startsWith(".") || normalizedFileName.endsWith(".")) {
+                return "Invalid file name: Cannot start or end with dot";
             }
             
             File baseDir = new File("/uploads");
             File file = new File(baseDir, normalizedFileName);
             
-            // 경로가 baseDir 내부에 있는지 확인
-            if (!file.getCanonicalPath().startsWith(baseDir.getCanonicalPath())) {
+            // 경로가 baseDir 내부에 있는지 확인 (더 엄격)
+            String canonicalPath = file.getCanonicalPath();
+            String baseCanonicalPath = baseDir.getCanonicalPath();
+            
+            if (!canonicalPath.startsWith(baseCanonicalPath + File.separator) && 
+                !canonicalPath.equals(baseCanonicalPath)) {
                 return "Access denied: Path traversal detected";
             }
             
@@ -197,13 +227,41 @@ public class VulnerableCode {
             throws ServletException, IOException {
         String userInput = request.getParameter("input");
         
-        // 수정: HTML 이스케이프 처리
-        String escapedInput = escapeHtml(userInput);
-        response.getWriter().println("<h1>User Input: " + escapedInput + "</h1>");
+        // 수정: 더 강화된 XSS 방어
+        String sanitizedInput = sanitizeInput(userInput);
+        response.setContentType("text/html; charset=UTF-8");
+        response.getWriter().println("<h1>User Input: " + sanitizedInput + "</h1>");
     }
     
     /**
-     * HTML 이스케이프 처리 메서드
+     * 강화된 입력 검증 및 이스케이프 처리 메서드
+     */
+    private String sanitizeInput(String input) {
+        if (input == null) return "";
+        
+        // 입력 길이 제한
+        if (input.length() > 1000) {
+            return "Input too long";
+        }
+        
+        // 위험한 패턴 제거
+        String[] dangerousPatterns = {
+            "<script", "</script", "javascript:", "onload=", "onerror=", 
+            "onclick=", "onmouseover=", "onfocus=", "onblur=",
+            "vbscript:", "data:", "expression("
+        };
+        
+        String sanitized = input;
+        for (String pattern : dangerousPatterns) {
+            sanitized = sanitized.replaceAll("(?i)" + pattern, "");
+        }
+        
+        // HTML 이스케이프 처리 (더 포괄적)
+        return escapeHtml(sanitized);
+    }
+    
+    /**
+     * HTML 이스케이프 처리 메서드 (강화)
      */
     private String escapeHtml(String input) {
         if (input == null) return "";
@@ -211,7 +269,10 @@ public class VulnerableCode {
                    .replace("<", "&lt;")
                    .replace(">", "&gt;")
                    .replace("\"", "&quot;")
-                   .replace("'", "&#x27;");
+                   .replace("'", "&#x27;")
+                   .replace("/", "&#x2F;")
+                   .replace("`", "&#x60;")
+                   .replace("=", "&#x3D;");
     }
     
     /**
