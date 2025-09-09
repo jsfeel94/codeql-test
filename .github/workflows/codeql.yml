@@ -1,9 +1,12 @@
 name: "CodeQL Analysis"
 
 on:
-  # PR에서만 CodeQL 실행 (중복 방지)
+  # PR에서 CodeQL 실행
   pull_request:
     branches: [ "main", "develop" ]
+  # main 브랜치 푸시 시에도 실행 (Security 탭 업데이트용)
+  push:
+    branches: [ "main" ]
   # 스케줄 실행 (정기 보안 검사)
   schedule:
     - cron: '0 2 * * 1'  # 매주 월요일 오전 2시에 실행
