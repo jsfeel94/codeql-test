@@ -21,13 +21,15 @@ public class VulnerableCode {
     private static final String DB_PASSWORD = "password123";
     
     /**
-     * SQL Injection 취약점 예제
+     * SQL Injection 취약점 수정 예제
      */
     public String getUserById(String userId) {
-        String query = "SELECT * FROM users WHERE id = " + userId; // 취약점: SQL Injection
+        String query = "SELECT * FROM users WHERE id = ?"; // 수정: PreparedStatement 사용
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, userId); // 안전한 파라미터 바인딩
+            ResultSet rs = stmt.executeQuery();
             
             if (rs.next()) {
                 return rs.getString("username");
