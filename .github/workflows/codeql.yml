@@ -35,8 +35,20 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        # CodeQL이 자동으로 빌드 방법을 감지하도록 설정
+        # CodeQL 쿼리 설정 옵션들:
+        # queries: security-and-quality  # 기본: 보안 + 품질 쿼리
+        # queries: security-extended     # 확장: 더 많은 보안 쿼리 (가양성 가능)
+        # queries: default               # 기본: 정확도 높은 쿼리만
+        # queries: security              # 보안: 보안 관련 쿼리만
+        # queries: quality               # 품질: 코드 품질 쿼리만
         queries: security-and-quality
+        
+        # 사용자 정의 쿼리 설정 예시:
+        # queries: |
+        #   - name: security-and-quality
+        #   - uses: security-extended
+        #   - name: custom-queries
+        #     uses: ./.github/codeql-queries
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4

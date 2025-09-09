@@ -39,19 +39,31 @@ public class VulnerableCode {
     }
     
     /**
-     * Command Injection 취약점 예제
+     * Command Injection 취약점 수정 예제
      */
     public String executeCommand(String userInput) {
         try {
-            // 취약점: Command Injection
-            Process process = Runtime.getRuntime().exec("ping " + userInput);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            StringBuilder output = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+            // 수정: ProcessBuilder 사용 및 입력 검증
+            if (userInput == null || userInput.trim().isEmpty()) {
+                return "Invalid input";
             }
-            return output.toString();
+            
+            // 허용된 명령어만 실행 (화이트리스트 방식)
+            if (!userInput.matches("^[a-zA-Z0-9.-]+$")) {
+                return "Invalid characters in input";
+            }
+            
+            ProcessBuilder pb = new ProcessBuilder("ping", "-c", "1", userInput);
+            Process process = pb.start();
+            
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                StringBuilder output = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+                return output.toString();
+            }
         } catch (IOException e) {
             e.printStackTrace();
             return "Error executing command";
@@ -59,32 +71,43 @@ public class VulnerableCode {
     }
     
     /**
-     * Path Traversal 취약점 예제
+     * Path Traversal 취약점 수정 예제
      */
     public String readFile(String fileName) {
         try {
-            // 취약점: Path Traversal
-            File file = new File("/uploads/" + fileName);
-            Scanner scanner = new Scanner(file);
-            StringBuilder content = new StringBuilder();
-            while (scanner.hasNextLine()) {
-                content.append(scanner.nextLine()).append("\n");
+            // 수정: 경로 검증 및 정규화
+            if (fileName == null || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+                return "Invalid file name";
             }
-            scanner.close();
-            return content.toString();
-        } catch (FileNotFoundException e) {
+            
+            File baseDir = new File("/uploads");
+            File file = new File(baseDir, fileName);
+            
+            // 경로가 baseDir 내부에 있는지 확인
+            if (!file.getCanonicalPath().startsWith(baseDir.getCanonicalPath())) {
+                return "Access denied: Path traversal detected";
+            }
+            
+            try (Scanner scanner = new Scanner(file)) {
+                StringBuilder content = new StringBuilder();
+                while (scanner.hasNextLine()) {
+                    content.append(scanner.nextLine()).append("\n");
+                }
+                return content.toString();
+            }
+        } catch (IOException e) {
             e.printStackTrace();
-            return "File not found";
+            return "File not found or access denied";
         }
     }
     
     /**
-     * Weak Hashing 취약점 예제 (MD5 사용)
+     * Weak Hashing 취약점 수정 예제 (SHA-256 사용)
      */
     public String hashPassword(String password) {
         try {
-            // 취약점: MD5는 취약한 해시 알고리즘
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            // 수정: SHA-256 사용 (더 안전한 해시 알고리즘)
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hashBytes = md.digest(password.getBytes());
             StringBuilder sb = new StringBuilder();
             for (byte b : hashBytes) {
@@ -122,14 +145,27 @@ public class VulnerableCode {
     }
     
     /**
-     * XSS 취약점 예제 (서블릿 컨텍스트)
+     * XSS 취약점 수정 예제 (서블릿 컨텍스트)
      */
     public void handleRequest(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         String userInput = request.getParameter("input");
         
-        // 취약점: 사용자 입력을 그대로 출력 (XSS)
-        response.getWriter().println("<h1>User Input: " + userInput + "</h1>");
+        // 수정: HTML 이스케이프 처리
+        String escapedInput = escapeHtml(userInput);
+        response.getWriter().println("<h1>User Input: " + escapedInput + "</h1>");
+    }
+    
+    /**
+     * HTML 이스케이프 처리 메서드
+     */
+    private String escapeHtml(String input) {
+        if (input == null) return "";
+        return input.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#x27;");
     }
     
     /**
@@ -150,15 +186,14 @@ public class VulnerableCode {
     }
     
     /**
-     * Resource Leak 취약점 예제
+     * Resource Leak 취약점 수정 예제
      */
     public void processFile(String fileName) {
-        try {
-            FileInputStream fis = new FileInputStream(fileName);
-            // 취약점: 리소스가 제대로 닫히지 않음
+        // 수정: try-with-resources 사용으로 자동 리소스 해제
+        try (FileInputStream fis = new FileInputStream(fileName)) {
             int data = fis.read();
             System.out.println("File data: " + data);
-            // fis.close()가 호출되지 않음
+            // fis는 자동으로 close()됨
         } catch (IOException e) {
             e.printStackTrace();
         }
