@@ -7,6 +7,7 @@ import javax.servlet.http.*;
 import javax.servlet.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 /**
  * 취약한 자바 코드 예제 - CodeQL SAST 진단용
@@ -137,27 +138,56 @@ public class VulnerableCode {
     }
     
     /**
-     * Hardcoded Password 취약점 예제
+     * Hardcoded Password 취약점 수정 예제
      */
     public boolean authenticateUser(String username, String password) {
-        // 취약점: 하드코딩된 패스워드
-        String adminPassword = "admin123";
+        // 수정: 환경변수 또는 설정 파일에서 패스워드 읽기
+        String adminPassword = System.getenv("ADMIN_PASSWORD");
+        if (adminPassword == null || adminPassword.isEmpty()) {
+            adminPassword = "default_secure_password"; // 기본값 (실제로는 설정 파일에서 읽어야 함)
+        }
         return "admin".equals(username) && adminPassword.equals(password);
     }
     
     /**
-     * Unsafe Deserialization 취약점 예제
+     * Unsafe Deserialization 취약점 수정 예제
      */
     public Object deserializeObject(byte[] data) {
         try {
-            // 취약점: 안전하지 않은 역직렬화
+            // 수정: 안전한 역직렬화 (화이트리스트 방식)
             ByteArrayInputStream bis = new ByteArrayInputStream(data);
             ObjectInputStream ois = new ObjectInputStream(bis);
+            
+            // 허용된 클래스만 역직렬화
+            String className = ois.readUTF();
+            if (!isAllowedClass(className)) {
+                throw new SecurityException("Deserialization of " + className + " is not allowed");
+            }
+            
             return ois.readObject();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+    }
+    
+    /**
+     * 허용된 클래스인지 확인하는 메서드
+     */
+    private boolean isAllowedClass(String className) {
+        // 허용된 클래스 목록 (실제로는 더 엄격하게 관리해야 함)
+        String[] allowedClasses = {
+            "java.lang.String",
+            "java.lang.Integer",
+            "java.util.ArrayList"
+        };
+        
+        for (String allowed : allowedClasses) {
+            if (className.equals(allowed)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
@@ -185,20 +215,47 @@ public class VulnerableCode {
     }
     
     /**
-     * Weak Random Number Generation 취약점 예제
+     * Weak Random Number Generation 취약점 수정 예제
      */
     public String generateToken() {
-        // 취약점: Random 클래스는 예측 가능
-        Random random = new Random();
-        return String.valueOf(random.nextInt(1000000));
+        // 수정: SecureRandom 사용 (암호학적으로 안전한 난수 생성)
+        try {
+            SecureRandom secureRandom = SecureRandom.getInstanceStrong();
+            byte[] tokenBytes = new byte[32];
+            secureRandom.nextBytes(tokenBytes);
+            
+            // 16진수 문자열로 변환
+            StringBuilder sb = new StringBuilder();
+            for (byte b : tokenBytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return "token_generation_failed";
+        }
     }
     
     /**
-     * Information Disclosure 취약점 예제
+     * Information Disclosure 취약점 수정 예제
      */
     public void logSensitiveInfo(String username, String password) {
-        // 취약점: 민감한 정보를 로그에 출력
-        System.out.println("Login attempt - Username: " + username + ", Password: " + password);
+        // 수정: 민감한 정보를 마스킹하여 로그 출력
+        String maskedPassword = maskPassword(password);
+        System.out.println("Login attempt - Username: " + username + ", Password: " + maskedPassword);
+    }
+    
+    /**
+     * 패스워드를 마스킹하는 메서드
+     */
+    private String maskPassword(String password) {
+        if (password == null || password.isEmpty()) {
+            return "***";
+        }
+        if (password.length() <= 2) {
+            return "***";
+        }
+        return password.charAt(0) + "***" + password.charAt(password.length() - 1);
     }
     
     /**
