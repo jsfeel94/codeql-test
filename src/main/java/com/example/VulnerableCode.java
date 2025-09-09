@@ -21,13 +21,15 @@ public class VulnerableCode {
     private static final String DB_PASSWORD = "password123";
     
     /**
-     * SQL Injection 취약점 예제
+     * SQL Injection 취약점 수정 예제
      */
     public String getUserById(String userId) {
-        String query = "SELECT * FROM users WHERE id = " + userId; // 취약점: SQL Injection
+        String query = "SELECT * FROM users WHERE id = ?"; // 수정: PreparedStatement 사용
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, userId); // 안전한 파라미터 바인딩
+            ResultSet rs = stmt.executeQuery();
             
             if (rs.next()) {
                 return rs.getString("username");
@@ -75,13 +77,27 @@ public class VulnerableCode {
      */
     public String readFile(String fileName) {
         try {
-            // 수정: 경로 검증 및 정규화
-            if (fileName == null || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+            // 수정: 강화된 경로 검증
+            if (fileName == null || fileName.trim().isEmpty()) {
                 return "Invalid file name";
             }
             
+            // 위험한 패턴 검사
+            String[] dangerousPatterns = {"..", "/", "\\", "~", "..\\", "../"};
+            for (String pattern : dangerousPatterns) {
+                if (fileName.contains(pattern)) {
+                    return "Invalid file name: Dangerous pattern detected";
+                }
+            }
+            
+            // 파일명 정규화
+            String normalizedFileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "");
+            if (!normalizedFileName.equals(fileName)) {
+                return "Invalid file name: Contains invalid characters";
+            }
+            
             File baseDir = new File("/uploads");
-            File file = new File(baseDir, fileName);
+            File file = new File(baseDir, normalizedFileName);
             
             // 경로가 baseDir 내부에 있는지 확인
             if (!file.getCanonicalPath().startsWith(baseDir.getCanonicalPath())) {
@@ -186,7 +202,7 @@ public class VulnerableCode {
     }
     
     /**
-     * Resource Leak 취약점 수정 예제
+     * Resource Leak 취약점 수정 예제dmㅓㅇ하
      */
     public void processFile(String fileName) {
         // 수정: try-with-resources 사용으로 자동 리소스 해제
