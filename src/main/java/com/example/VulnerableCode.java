@@ -231,7 +231,19 @@ public class VulnerableCode {
         // 수정: 더 강화된 XSS 방어
         String sanitizedInput = sanitizeInput(userInput);
         response.setContentType("text/html; charset=UTF-8");
-        response.getWriter().println("<h1>User Input: " + sanitizedInput + "</h1>");
+        // 수정: 더 안전한 HTML 출력 (이중 이스케이프 + 템플릿 기반)
+        String doubleEscapedInput = escapeHtml(escapeHtml(sanitizedInput));
+        
+        // 템플릿 기반 안전한 HTML 생성
+        StringBuilder safeHtml = new StringBuilder();
+        safeHtml.append("<!DOCTYPE html>\n");
+        safeHtml.append("<html><head><title>User Input</title></head>\n");
+        safeHtml.append("<body>\n");
+        safeHtml.append("<h1>User Input: ").append(doubleEscapedInput).append("</h1>\n");
+        safeHtml.append("<p>Input Length: ").append(sanitizedInput.length()).append("</p>\n");
+        safeHtml.append("</body></html>");
+        
+        response.getWriter().println(safeHtml.toString());
     }
     
     /**
